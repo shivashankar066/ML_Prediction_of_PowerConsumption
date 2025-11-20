@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import mean_squared_error, r2_score
 # from preprocess import preprocess_data
-from models import get_models
+from scripts.models import get_models
 from scripts.utils import DATA_DIR, OUTPUT_DIR
 from sklearn.model_selection import train_test_split
 import pandas as pd
