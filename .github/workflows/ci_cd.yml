@@ -3,6 +3,7 @@ name: HVAC Model CI/CD Pipeline
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
   schedule:
     - cron: "0 2 * * *"   # runs daily at 2 AM
 
