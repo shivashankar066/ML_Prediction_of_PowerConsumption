@@ -2,7 +2,7 @@ import shap
 import numpy as np
 import pandas as pd
 import os
-from utils import OUTPUT_DIR
+from scripts.utils import OUTPUT_DIR
 
 
 def shap_feature_importance(model, X, top_n=5):
