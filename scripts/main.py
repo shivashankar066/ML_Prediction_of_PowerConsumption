@@ -1,6 +1,9 @@
-from utils import ensure_dirs, DATA_DIR
-from train_pipeline import hvac_pipeline
-from explain_shap import generate_shap_report
+# from utils import ensure_dirs, DATA_DIR
+# from train_pipeline import hvac_pipeline
+# from explain_shap import generate_shap_report
+from scripts.utils import ensure_dirs, DATA_DIR
+from scripts.train_pipeline import hvac_pipeline
+from scripts.explain_shap import generate_shap_report
 import os
 
 ensure_dirs()
