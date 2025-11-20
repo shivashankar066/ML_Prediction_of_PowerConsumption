@@ -1,0 +1,405 @@
+
+step-1 
+
+Machine list: with the meters consumption.
+
+query
+
+SELECT
+
+    pvt.TimestampUTC,
+
+    pvt.Name,
+
+    ISNULL(pvt.[Active Energy Delivered], 0) AS [Active Energy Delivered],
+
+    ISNULL(pvt.[Current Phase Average], 0) AS [Current Phase Average],
+
+    ISNULL(pvt.[Average Voltage Line-to-Neutral], 0) AS [Average Voltage Line-to-Neutral],
+
+    ISNULL(pvt.[Average Voltage Line-to-Line], 0) AS [Average Voltage Line-to-Line],
+
+    ISNULL(pvt.[Apparent Energy Delivered-Received], 0) AS [Apparent Energy Delivered-Received],
+
+    ISNULL(pvt.[Operating Hours], 0) AS [Operating Hours]
+
+FROM
+
+(
+
+    SELECT
+
+        [s].[Name],
+
+        [d].[Value],
+
+        [q].[Name] AS [QuantityName],
+
+        [d].[TimestampUTC]
+
+    FROM [ION_Data].[dbo].[Source] [s]
+
+    JOIN [ION_Data].[dbo].[DataLog2] [d] ON [s].[ID] = [d].[SourceID]
+
+    JOIN [ION_Data].[dbo].[Quantity] [q] ON [d].[QuantityID] = [q].[ID]
+
+    where (([s].[Name] Like '%AHU1.1%') or ([s].[Name] Like '%AHU.%') or ([s].[Name] Like '%HVAC.%') and ([s].[Name] not Like 'HVAC.groundfloorvrf') and ([s].[Name] not like 'HVAC.Borewell_2')) 
+
+    and [d].[TimestampUTC] > '2023-01-01 00:00:00.000'
+
+) AS src
+
+PIVOT
+
+(
+
+    sum([Value])
+
+    FOR [QuantityName] IN ([Active Energy Delivered], [Current Phase Average], 
+
+                           [Average Voltage Line-to-Neutral], [Average Voltage Line-to-Line], 
+
+                           [Apparent Energy Delivered-Received], [Operating Hours])
+
+) AS pvt
+
+ORDER BY pvt.TimestampUTC, pvt.Name;
+
+
+
+
+
+shopfloor parameters: like ambient.temp, jumbo.temp, jumbo.humidity
+
+query:
+
+SELECT
+
+pvt.TimestampUTC,
+
+ISNULL(pvt.[Jumbo.Temp3], 0) AS[Jumbo.Temp3],
+
+ISNULL(pvt.[Jumbo.Temp2], 0) AS[Jumbo.Temp2],
+
+ISNULL(pvt.[Jumbo.Temp1], 0) AS[Jumbo.Temp1],
+
+ISNULL(pvt.[Jumbo.Humidity3], 0) AS[Jumbo.Humidity3],
+
+ISNULL(pvt.[Jumbo.Humidity], 0) AS[Jumbo.Humidity],
+
+ISNULL(pvt.[Ambient.Temp],0) as [Ambient.Temp]
+
+FROM
+
+(
+
+    select
+
+   	[s].[Name],
+
+   	[d].[Value],
+
+   	[d].[TimestampUTC]
+
+    from [ION_Data].[dbo].[Source][s]
+
+   	join[ION_Data].[dbo].[DataLog2][d] on[s].[ID]=[d].[SourceID]
+
+   	join[ION_Data].[dbo].[Quantity][q] on[d].[QuantityID]=[q].[ID]
+
+    where[s].[ID] in (97, 99, 101, 98, 99, 102,166)and [d].[TimestampUTC] > '2023-01-01 00:00:00.000'
+
+   
+
+
+
+) AS src
+
+PIVOT
+
+(
+
+    sum([Value])
+
+    FOR[Name] IN([Jumbo.Humidity], [Jumbo.Humidity3],
+
+                 [Jumbo.Temp1], [Jumbo.Temp2],
+
+                 [Jumbo.Temp3],[Ambient.Temp])
+
+) AS pvt
+
+ORDER BY pvt.TimestampUTC
+
+
+
+join this two with Time-hourly columns which has date and hour.
+
+
+
+step-2
+
+chiller names and it's parameters: avg return water temp,
+
+avg supply water temp,discharage pressure, suction pressure,
+
+compressor capacity 1 and 2.
+
+select 'chiller' as 'Name',
+
+	[WINCC_DB].[dbo].[Chiller].[Date_Time],
+
+	[WINCC_DB].[dbo].[Chiller].[Ret_Wat_Temp],
+
+	[WINCC_DB].[dbo].[Chiller].[Sys1_Suction_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller].[Sys1_Discharge_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller].[Sys2_Suction_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller].[Sys2_Discharge_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp1_Discharge_Temp],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp2_Discharge_Temp],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp1_Discharge_Super_Heat],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp2_Discharge_Super_Heat],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp1_Amps],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp1_Full_Load_Amps],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp1_Capacity],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp1_Total_Running_Hours],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp2_Amps],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp2_Full_Load_Amps],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp2_Capacity],
+
+	[WINCC_DB].[dbo].[Chiller].[Comp2_Total_Running_Hours],
+
+	[WINCC_DB].[dbo].[Chiller].[Leaving_Water_Temperature] 
+
+from [WINCC_DB].[dbo].[Chiller] 
+
+
+
+union all
+
+
+
+select 'chiller-2' as 'Name',
+
+	[WINCC_DB].[dbo].[Chiller_2].[Date_Time],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Ret_Wat_Temp],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Sys1_Suction_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Sys1_Discharge_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Sys2_Suction_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Sys2_Discharge_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp1_Discharge_Temp],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp2_Discharge_Temp],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp1_Discharge_Super_Heat],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp2_Discharge_Super_Heat],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp1_Amps],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp1_Full_Load_Amps],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp1_Capacity],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp1_Total_Running_Hours],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp2_Amps],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp2_Full_Load_Amps],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp2_Capacity],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Comp2_Total_Running_Hours],
+
+	[WINCC_DB].[dbo].[Chiller_2].[Leaving_Water_Temperature2] 
+
+from [WINCC_DB].[dbo].[Chiller_2] 
+
+
+
+union all
+
+
+
+select 'chiller-3' as 'Name',
+
+	[WINCC_DB].[dbo].[Chiller_3].[Date_Time],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Ret_Wat_Temp],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Sys1_Suction_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Sys1_Discharge_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Sys2_Suction_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Sys2_Discharge_Pressure],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp1_Discharge_Temp],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp2_Discharge_Temp],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp1_Discharge_Super_Heat],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp2_Discharge_Super_Heat],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp1_Amps],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp1_Full_Load_Amps],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp1_Capacity],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp1_Total_Running_Hours],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp2_Amps],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp2_Full_Load_Amps],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp2_Capacity],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Comp2_Total_Running_Hours],
+
+	[WINCC_DB].[dbo].[Chiller_3].[Leaving_Water_Temperature3] 
+
+from [WINCC_DB].[dbo].[Chiller_3]
+
+
+
+join chiller data with above data with name and Time-Hourly column.
+
+
+
+step-3
+
+
+
+join above output data with barcode data this data tell how many people or employee count are there in the shopfloor with date columns.
+
+query:
+
+select [TLMAL].[dbo].[sfms_znvaemp_backup_fiorireport].[Start Date],
+
+	Cast([TLMAL].[dbo].[sfms_znvaemp_backup_fiorireport].[Employee ID] as [varchar](20)) as [Employee_ID],
+
+	[TLMAL].[dbo].[sfms_znvaemp_backup_fiorireport].[Shift],
+
+	[TLMAL].[dbo].[sfms_znvaemp_backup_fiorireport].[Program Name] 
+
+from [TLMAL].[dbo].[sfms_znvaemp_backup_fiorireport] 
+
+
+
+union
+
+
+
+select [TLMAL].[dbo].[sfms_znvaemp_replace_2_fiorireport_tlmal].[Start Date],
+
+	Cast([TLMAL].[dbo].[sfms_znvaemp_replace_2_fiorireport_tlmal].[Employee ID] as [varchar](20)) as [Employee_ID],
+
+	[TLMAL].[dbo].[sfms_znvaemp_replace_2_fiorireport_tlmal].[Shift],
+
+	[TLMAL].[dbo].[sfms_znvaemp_replace_2_fiorireport_tlmal].[Program Name] 
+
+from [TLMAL].[dbo].[sfms_znvaemp_replace_2_fiorireport_tlmal] 
+
+
+
+union
+
+
+
+select [TLMAL].[dbo].[sfms_znvaemp_replace_1_fiorireport_tlmal].[Start Date],
+
+	Cast([TLMAL].[dbo].[sfms_znvaemp_replace_1_fiorireport_tlmal].[Employee ID] as [varchar](20)) as [Employee_ID],
+
+	[TLMAL].[dbo].[sfms_znvaemp_replace_1_fiorireport_tlmal].[Shift],
+
+	[TLMAL].[dbo].[sfms_znvaemp_replace_1_fiorireport_tlmal].[Program Name] 
+
+from [TLMAL].[dbo].[sfms_znvaemp_replace_1_fiorireport_tlmal] 
+
+
+
+union
+
+
+
+select [TLMAL].[dbo].[sfms_znvaemp_append_fiorireport_tlmal].[Start Date],
+
+	Cast([TLMAL].[dbo].[sfms_znvaemp_append_fiorireport_tlmal].[Employee ID] as [varchar](20)) as [Employee_ID],
+
+	[TLMAL].[dbo].[sfms_znvaemp_append_fiorireport_tlmal].[Shift],
+
+	[TLMAL].[dbo].[sfms_znvaemp_append_fiorireport_tlmal].[Program Name] 
+
+from [TLMAL].[dbo].[sfms_znvaemp_append_fiorireport_tlmal]
+
+
+
+step-4
+
+
+
+apply machine learning algorthum which random forest for finding anomalies and ahu machines and HVAC machines seperatly predict the consumption columns.
+
+
+
+
+
+step-5
+
+
+
+store in analytics data base
+
+odb:Provider=SQLOLEDB.1;Password=__EncPwd1__;Persist Security Info=True;User ID=taslview;Initial Catalog=TLMAL;Data Source=10.10.9.32;Use Procedure for Prepare=1;Auto Translate=True;Packet Size=4096;Workstation ID=HYDS92-R017;Use Encryption for Data=False;Tag with column collation when possible=False|||HVAC_Regression
+
+
+
+
+
+step-6
+
+
+
+1.mail alerts for alerts on ahu
+
+2.EPI mail alerts
+
+3.actual vs prediction delta
+
+this is my HVAC Power Consumption Prediction project
+
+objective is identify anomolies and epi based alerts and predicting the last day wise today hvac consumption like a plan is my prediction and actual is the consumption.
+
+
+
+if plan consumption is 200kv and actuall is 250kv by see this PEM team can inspect the machines why is the consumption is more is it due to maintences or more running or any other reason.
+
+there is one more case where plan consumption is 200kv and actual is 150kv which indicate machines are running in good condition.
+
+basiclly as you know random forest willl take past date and find the patters to predict the future like wise past health help predict the future health.
+
+
+
