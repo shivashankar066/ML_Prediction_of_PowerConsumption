@@ -3,13 +3,14 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import mean_squared_error, r2_score
-from preprocess import preprocess_data
+# from preprocess import preprocess_data
 from models import get_models
-from utils import DATA_DIR, OUTPUT_DIR
+from scripts.utils import DATA_DIR, OUTPUT_DIR
 from sklearn.model_selection import train_test_split
 import pandas as pd
-from utils import get_last_7_days, OUTPUT_DIR
-from explain_shap import generate_shap_report
+from scripts.utils import get_last_7_days, OUTPUT_DIR
+from scripts.explain_shap import generate_shap_report
+from scripts.preprocess import preprocess_data
 
 def load_and_prepare(path):
     # Auto-detect Excel or CSV
