@@ -9,7 +9,8 @@ def shap_feature_importance(model, X, top_n=5):
     """
     Returns a dataframe with Top-N most impactful SHAP features per row.
     """
-    explainer = shap.TreeExplainer(model)
+    # explainer = shap.TreeExplainer(model)
+    explainer = shap.TreeExplainer(model, feature_perturbation="interventional")
     shap_values = explainer.shap_values(X)
 
     feature_names = X.columns

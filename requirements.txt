@@ -9,7 +9,7 @@ openpyxl
 pandas
 numpy
 scikit-learn
-xgboost
+# xgboost
 lightgbm
-
+xgboost==1.7.6
 
