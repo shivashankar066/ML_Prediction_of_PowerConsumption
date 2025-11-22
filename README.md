@@ -2,6 +2,7 @@
 
 This project builds an end-to-end Machine Learning pipeline to predict power consumption for an HVAC system using historical meter data.
 It includes data preprocessing, model training, evaluation, SHAP explainability, and automated CI/CD using GitHub Actions.
+
 🚀 Features
 ✅ Complete ML Pipeline
 
