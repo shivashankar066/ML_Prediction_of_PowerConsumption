@@ -102,3 +102,7 @@ Save SHAP plots + metrics
 Upload outputs as artifacts
 
 Users can download artifacts directly from the Actions → Workflow Run → Artifacts section.
+
+
+# Below is the command to run in local machine
+ python -m scripts.main
