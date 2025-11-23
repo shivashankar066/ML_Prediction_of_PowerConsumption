@@ -52,6 +52,13 @@ def generate_shap_report(model, full_test, full_target, last7, features, top_n=2
         / full_df["Actual_Power"]
     ) * 100
 
+    # Add Energy Performance Indicator (EPI)
+    full_df["EPI"] = full_df.apply(
+        lambda row: row["Active_Energy_Delivered"] / row["Operating_Hours"]
+        if row["Operating_Hours"] > 0 else 0,
+        axis=1
+    )
+
     # Anomaly flag
     full_df["Anomaly_Flag"] = np.where(
         np.abs(full_df["Error_%"]) > 20,
@@ -80,6 +87,11 @@ def generate_shap_report(model, full_test, full_target, last7, features, top_n=2
     last7_df = last7.reset_index(drop=True).copy()
     last7_df["Predicted_Power"] = preds_last7
 
+    last7_df["EPI"] = last7_df.apply(
+        lambda row: row["Active_Energy_Delivered"] / row["Operating_Hours"]
+        if row["Operating_Hours"] > 0 else 0,
+        axis=1
+    )
     # SHAP for last 7 days
     top7 = shap_feature_importance(model, last7_X, top_n=top_n)
 
