@@ -82,11 +82,12 @@ def evaluate_model(model, X_train, y_train, X_test, y_test):
 
 def hvac_pipeline(data_path):
     df, features, le = load_and_prepare(data_path)
+
+    # Split
     train, test = split_random(df)
     X_train, y_train = train[features], train["Active_Energy_Delivered"]
     X_test, y_test = test[features], test["Active_Energy_Delivered"]
-    print("training columns:", X_train.columns.tolist())
-    print("testing columns:", X_test.columns.tolist())
+
     models = get_models()
     all_metrics = {}
     all_predictions = {}
@@ -94,38 +95,34 @@ def hvac_pipeline(data_path):
     best_model = None
     best_r2 = -999
 
+    # Train models
     for name, model in models.items():
         print(f"Training {name}...")
         model.fit(X_train, y_train)
-        metrics, y_pred_train, y_pred_test = evaluate_model(model, X_train, y_train, X_test, y_test)
+
+        metrics, y_pred_train, y_pred_test = evaluate_model(
+            model, X_train, y_train, X_test, y_test
+        )
+
         all_metrics[name] = metrics
         all_predictions[name] = (y_pred_test, model)
 
-        test_r2 = metrics['Test']['R2']
-        if test_r2 > best_r2:
-            best_r2 = test_r2
+        if metrics["Test"]["R2"] > best_r2:
+            best_r2 = metrics["Test"]["R2"]
             best_model = model
+            best_model_name = name
 
-    # choose best_model for SHAP/exports
-    chosen_preds, _ = all_predictions[list(all_predictions.keys())[0]]
-    # create a base test_result for the best_model
-    y_pred_best = all_predictions[[k for k,v in all_predictions.items() if getattr(v[1], 'feature_importances_', None) is not None][0]][0] if True else all_predictions[list(all_predictions.keys())[0]][0]
+    print(f"\nBest Model Selected → {best_model_name} (R2={best_r2})")
 
-    # Use best_model for creating shap and final excel
-    best_model_name = None
-    for k, v in all_metrics.items():
-        if v['Test']['R2'] == best_r2:
-            best_model_name = k
-            break
-
-    print(f"Best model by Test R2: {best_model_name} (R2={best_r2})")
-
-    # Evaluate chosen best model predictions
-    chosen_pred_array, chosen_model = all_predictions[best_model_name]
+    # Final predictions for the best model
+    best_preds, _ = all_predictions[best_model_name]
 
     test_result = test.copy().reset_index(drop=True)
-    test_result["Predicted_Power"] = chosen_pred_array
-    test_result["Error_%"] = ((test_result["Predicted_Power"] - test_result["Active_Energy_Delivered"]) / test_result["Active_Energy_Delivered"]) * 100
+    test_result["Predicted_Power"] = best_preds
+    test_result["Error_%"] = (
+        (test_result["Predicted_Power"] - test_result["Active_Energy_Delivered"])
+        / test_result["Active_Energy_Delivered"]
+    ) * 100
 
     test_result["Anomaly_Flag"] = np.where(
         np.abs(test_result["Error_%"]) > 20,
@@ -133,27 +130,33 @@ def hvac_pipeline(data_path):
         "Normal"
     )
 
+    # --- SHAP REPORTS ---
     last_7_days = get_last_7_days(test)
-    generate_shap_report(chosen_model, last_7_days, features)
 
-    # Save metrics summary
-    metrics_summary = []
-    for name, met in all_metrics.items():
-        metrics_summary.append({
-            'Model': name,
-            'Train_RMSE': met['Train']['RMSE'],
-            'Train_R2': met['Train']['R2'],
-            'Test_RMSE': met['Test']['RMSE'],
-            'Test_R2': met['Test']['R2']
-        })
+    generate_shap_report(
+        model=best_model,
+        full_test=test,          # FIXED
+        full_target=y_test,      # Correct true values
+        last7=last_7_days,       # Correct 7-days data
+        features=features
+    )
+
+    # Save metrics file
+    metrics_summary = [
+        {
+            "Model": name,
+            "Train_RMSE": met["Train"]["RMSE"],
+            "Train_R2": met["Train"]["R2"],
+            "Test_RMSE": met["Test"]["RMSE"],
+            "Test_R2": met["Test"]["R2"],
+        }
+        for name, met in all_metrics.items()
+    ]
 
     metrics_df = pd.DataFrame(metrics_summary)
-    metrics_out = os.path.join(OUTPUT_DIR, 'metrics.csv')
-    metrics_df.to_csv(metrics_out, index=False)
-    print(f"Saved metrics -> {metrics_out}")
+    metrics_df.to_csv(os.path.join(OUTPUT_DIR, "metrics.csv"), index=False)
 
-    # Save a CSV of test (used by SHAP script)
-    test_csv_path = os.path.join(OUTPUT_DIR, 'test_for_shap.csv')
-    test_result.to_csv(test_csv_path, index=False)
+    # Save SHAP-ready CSV
+    # test_result.to_csv(os.path.join(OUTPUT_DIR, "test_for_shap.csv"), index=False)
 
-    return all_metrics, test_result, chosen_model, features
+    return all_metrics, test_result, best_model, features

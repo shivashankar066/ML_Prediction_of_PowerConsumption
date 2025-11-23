@@ -9,13 +9,12 @@ def shap_feature_importance(model, X, top_n=5):
     """
     Returns a dataframe with Top-N most impactful SHAP features per row.
     """
-    # explainer = shap.TreeExplainer(model)
+    top_n = min(top_n, X.shape[1])
     explainer = shap.TreeExplainer(model, feature_perturbation="interventional")
     shap_values = explainer.shap_values(X)
 
     feature_names = X.columns
 
-    # Extract Top-N SHAP features per row
     top_features = []
     for row in np.abs(shap_values):
         top_idx = np.argsort(row)[::-1][:top_n]
@@ -30,48 +29,65 @@ def shap_feature_importance(model, X, top_n=5):
     return top_features_df
 
 
-def generate_shap_report(model, test_df, features, out_path=None, top_n=5):
+def generate_shap_report(model, full_test, full_target, last7, features, top_n=20):
     """
-    Generates an XLSX file including:
-    - Actual values
-    - Predicted values
-    - Error percentage
-    - Anomaly detection flag
-    - Top-N SHAP impactful features per row
+    Generates two XLSX files:
+    1. test_predictions_with_shap.xlsx → full test dataset
+    2. test_for_shap.xlsx → latest 7-days only
     """
 
-    if out_path is None:
-        out_path = os.path.join(OUTPUT_DIR, "test_predictions_with_shap.xlsx")
+    # -----------------------------
+    # 1️⃣  FULL TEST DATA SHAP REPORT
+    # -----------------------------
 
-    X_test = test_df[features].reset_index(drop=True)
-    preds = model.predict(X_test)
+    X_test_full = full_test[features].reset_index(drop=True)
+    preds_full = model.predict(X_test_full)
 
-    # Core results dataframe
-    result = test_df.reset_index(drop=True).copy()
-    result["Predicted_Power"] = preds
+    full_df = full_test.reset_index(drop=True).copy()
+    full_df["Predicted_Power"] = preds_full
+    full_df["Actual_Power"] = full_target.values
 
-    result["Error_%"] = (
-        (result["Predicted_Power"] - result["Active_Energy_Delivered"])
-        / result["Active_Energy_Delivered"]
+    full_df["Error_%"] = (
+        (full_df["Predicted_Power"] - full_df["Actual_Power"])
+        / full_df["Actual_Power"]
     ) * 100
 
-    # Flag anomalies if error > ±20%
-    result["Anomaly_Flag"] = np.where(
-        np.abs(result["Error_%"]) > 20,
-        np.where(result["Error_%"] > 0, "Overconsumption", "Underconsumption"),
+    # Anomaly flag
+    full_df["Anomaly_Flag"] = np.where(
+        np.abs(full_df["Error_%"]) > 20,
+        np.where(full_df["Error_%"] > 0, "Overconsumption", "Underconsumption"),
         "Normal"
     )
 
-    # Compute SHAP top features
-    top_features_df = shap_feature_importance(model, X_test, top_n=top_n)
+    # SHAP for full test
+    top_features_full = shap_feature_importance(model, X_test_full, top_n=top_n)
 
-    # Merge both
-    final_df = pd.concat([result, top_features_df], axis=1)
+    full_final = pd.concat([full_df, top_features_full], axis=1)
 
-    # Save excel
-    final_df.to_excel(out_path, index=False)
+    # Save file
+    full_out_path = os.path.join(OUTPUT_DIR, "test_predictions_with_shap.xlsx")
+    full_final.to_excel(full_out_path, index=False)
 
-    print("\n✔ Test predictions with SHAP saved to:")
-    print(out_path)
+    print(f"✔ Full test SHAP file saved: {full_out_path}")
 
-    return final_df
+    # -----------------------------
+    # 2️⃣  LAST 7 DAYS SHAP REPORT
+    # -----------------------------
+
+    last7_X = last7[features].reset_index(drop=True)
+    preds_last7 = model.predict(last7_X)
+
+    last7_df = last7.reset_index(drop=True).copy()
+    last7_df["Predicted_Power"] = preds_last7
+
+    # SHAP for last 7 days
+    top7 = shap_feature_importance(model, last7_X, top_n=top_n)
+
+    last7_final = pd.concat([last7_df, top7], axis=1)
+
+    last7_out_path = os.path.join(OUTPUT_DIR, "test_for_shap.xlsx")
+    last7_final.to_excel(last7_out_path, index=False)
+
+    print(f"✔ Last 7-days SHAP file saved: {last7_out_path}")
+
+    return full_final, last7_final
