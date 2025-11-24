@@ -106,7 +106,22 @@ Users can download artifacts directly from the Actions → Workflow Run → Arti
 <<<<<<< HEAD
 
 
-# Below is the command to run in local machine
+ Below is the command to run in local machine
  python -m scripts.main
-=======
->>>>>>> 48ba2b13bddcfb03402fdfbb7582385b6e0ca912
+
+Below are the commands related to dockers
+
+docker build -t hvac-prediction:latest .
+docker images
+docker run -d -p 8000:8000 hvac-prediction:latest
+docker ps
+docker stop <container_id>
+docker rm <container_id>    
+docker push <your_dockerhub_username>/hvac-prediction:latest
+
+docker save -o hvac_image.tar hvac-prediction:latest
+docker load -i hvac_image.tar
+docker run hvac-prediction
+docker run --rm hvac-prediction
+docker logout
+docker login -u shivashankarrampur
